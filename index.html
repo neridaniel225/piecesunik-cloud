@@ -402,10 +402,8 @@ textarea.fi{resize:vertical;min-height:76px}
       <button class="btn btn-k" onclick="savePayments()">Enregistrer</button>
     </div></div>
     <div class="card"><div class="ch"><span class="ct">Thème & Couleurs</span></div><div class="cb">
-      <div class="fg"><label>Couleur principale</label><div style="display:flex;gap:8px"><input type="color" value="#C9A227" style="width:38px;height:32px;border:1.5px solid var(--w3);border-radius:5px;cursor:pointer;padding:2px"/><input class="fi" value="#C9A227"/></div></div>
-      <div class="fg"><label>Police titres</label><select class="fi"><option>Barlow Condensed</option><option>Impact</option><option>Oswald</option></select></div>
-      <div class="fg"><label>Police textes</label><select class="fi"><option>Barlow</option><option>Inter</option><option>Roboto</option></select></div>
-      <button class="btn btn-k" onclick="toast('Thème appliqué')">Appliquer</button>
+      <div class="fg"><label>Couleur principale du site (boutons, accents, détails)</label><div style="display:flex;gap:8px"><input type="color" id="th-c" value="#C9A227" oninput="$('th-h').value=this.value" style="width:38px;height:32px;border:1.5px solid var(--w3);border-radius:5px;cursor:pointer;padding:2px"/><input class="fi" id="th-h" value="#C9A227" maxlength="7" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))$('th-c').value=this.value"/></div></div>
+      <button class="btn btn-k" onclick="saveTheme()">Appliquer sur le site</button>
     </div></div>
     <div class="card" style="border-color:var(--rdb)"><div class="ch" style="border-color:var(--rdb)"><span class="ct tr">⚠️ Zone dangereuse</span></div><div class="cb">
       <p style="font-size:12.5px;color:var(--g);margin-bottom:1rem;line-height:1.7">Réinitialise toutes les données de l'admin (produits, commandes…). Cette action est irréversible. Le mot de passe sera demandé.</p>
@@ -631,6 +629,7 @@ async function loadAllAdminData(){
     MQ=(textsR.data||[]).filter(t=>t.kind==='marquee').map(t=>({id:t.id,content:t.content}));
     TK=(textsR.data||[]).filter(t=>t.kind==='ticker').map(t=>({id:t.id,content:t.content}));
     SETTINGS=settingsR.data||{};
+    applyAdminTheme(SETTINGS.theme_color);
     if(SETTINGS.shop_logo){const sl=document.getElementById('sbLogoImg');if(sl){sl.src=SETTINGS.shop_logo;sl.style.width='auto';sl.style.maxWidth='90px';}}
     NAV_LINKS=(navR.data||[]).map(n=>({id:n.id,label:n.label,link:n.link,active:n.active,sort:n.sort_order||0,highlight:n.highlight||false,isCategory:n.is_category||false}));
     SUPPLIER_PAYOUTS=(payoutsR.data||[]).map(p=>({id:p.id,fourn:p.fourn_id,orderIds:p.order_ids||[],amount:Number(p.amount)||0,date:p.date,notes:p.notes||''}));
@@ -683,7 +682,20 @@ async function changePass(){
   toast('Mot de passe mis à jour ✓');
 }
 
+function applyAdminTheme(c){
+  if(!/^#[0-9a-fA-F]{6}$/.test(c||''))return;
+  const n=parseInt(c.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;
+  document.documentElement.style.setProperty('--red',c);
+  document.documentElement.style.setProperty('--rdl',`rgba(${r},${g},${b},.08)`);
+  document.documentElement.style.setProperty('--rdb',`rgba(${r},${g},${b},.2)`);
+}
+async function saveTheme(){
+  const c=($('th-h')?.value||'').trim();
+  if(!/^#[0-9a-fA-F]{6}$/.test(c)){toast('Couleur invalide (ex : #C9A227)','e');return;}
+  await saveSettings({theme_color:c});applyAdminTheme(c);
+}
 function rdSettingsForms(){
+  {const c=SETTINGS.theme_color||'#C9A227';if($('th-c'))$('th-c').value=c;if($('th-h'))$('th-h').value=c;}
   // Initialiser les checkboxes paiements depuis SETTINGS
   const payFields={orange:'pay-orange',mtn:'pay-mtn',moov:'pay-moov',cash:'pay-cash',wave:'pay-wave'};
   Object.entries(payFields).forEach(([key,id])=>{
