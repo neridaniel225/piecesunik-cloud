@@ -365,6 +365,9 @@ textarea.fi{resize:vertical;min-height:76px}
     <div class="tab" onclick="swtp('st-foot',this)">Footer</div>
   </div>
   <div class="tp on" id="st-hero">
+    <div class="card" style="margin-bottom:12px"><div class="ch"><span class="ct">Afficher le carrousel sur l'accueil</span>
+      <label class="tog"><input type="checkbox" id="car-on" onchange="saveSettings({carousel_enabled:this.checked})"/><span class="tr2"></span><span class="th"></span></label></div>
+      <div style="padding:0 14px 12px;font-size:12px;color:var(--g)">Désactivé : le grand carrousel disparaît et les catégories s'affichent directement en haut de l'accueil.</div></div>
     <div class="card"><div class="ch"><span class="ct">Slides carrousel hero</span><button class="btn btn-k btn-sm" onclick="oModal('add-slide',slideForm({}),doSave)">+ Ajouter slide</button></div><div id="sl-list" style="padding:11px;display:flex;flex-direction:column;gap:8px"></div></div>
   </div>
   <div class="tp" id="st-nd"></div>
@@ -594,7 +597,7 @@ function mapTxFromDb(t){
   return {id:t.id,date:t.date,desc:t.description,cat:t.category,fourn:t.fourn_id||'',in:Number(t.amount_in)||0,out:Number(t.amount_out)||0};
 }
 function mapSlideFromDb(s){
-  return {id:s.id,title:s.title,subtitle:s.subtitle||'',eyebrow:s.eyebrow||'',cta:s.cta||'Découvrir →',link:s.link||'homme',img:s.img||'',active:s.active};
+  return {id:s.id,title:s.title,subtitle:s.subtitle||'',eyebrow:s.eyebrow||'',cta:s.cta||'Découvrir →',link:s.link||'',img:s.img||'',active:s.active};
 }
 
 // ═══ CHARGEMENT INITIAL DEPUIS SUPABASE ═══
@@ -1153,7 +1156,7 @@ function renderProds(){
     return `<tr>
       <td>${p.img?`<img src="${p.img}" class="ti" onerror="this.style.opacity='.3'"/>`:imgPh()}</td>
       <td class="tw2">${p.name}</td>
-      <td><span class="b ${p.cat==='homme'?'bn':p.cat==='femme'?'bh':'bl'}">${CATS.find(c=>c.id===p.cat)?.name||p.cat}</span></td>
+      <td><span class="b ${'bl'}">${CATS.find(c=>c.id===p.cat)?.name||p.cat}</span></td>
       <td style="font-size:11.5px">${fn?fn.name:'—'}</td>
       <td class="tg" style="font-size:12px">${p.buy?FMT(p.buy):'—'}</td>
       <td class="tw2">${FMT(p.price)}</td>
@@ -1235,8 +1238,6 @@ async function tglCat(id,v){
   }catch(err){console.error(err);toast('Erreur','e');}
 }
 async function delCat(id){
-  const protectedIds=['femme','homme','acc','newdrop'];
-  if(protectedIds.includes(id)){toast('Cette catégorie est utilisée par une page du site — désactive-la plutôt que de la supprimer','e');return;}
   const n=PRODS.filter(p=>p.cat===id).length;
   if(n>0){toast(n+' produits utilisent cette catégorie','e');return;}
   if(!confirm('Supprimer ?'))return;
@@ -1334,6 +1335,7 @@ function tScop(){const v=document.querySelector('input[name="pm-sc"]:checked')?.
 
 // CONTENU SITE
 function rdSite(){
+  {const ce=$('car-on');if(ce)ce.checked=SETTINGS.carousel_enabled!==false;}
   rdSettingsForms();
   $('sl-list').innerHTML=SLIDES.map((s,i)=>`<div style="display:flex;align-items:center;gap:10px;background:var(--w2);border:1.5px solid var(--w3);border-radius:6px;overflow:hidden;padding-right:10px">
     <div style="width:76px;height:54px;flex-shrink:0;overflow:hidden;background:var(--w3)">
@@ -1388,7 +1390,7 @@ function navLinkForm(n){return `
     <div style="font-size:11px;color:var(--g);margin-top:4px">Si choisi, le texte affiché reste toujours synchronisé avec le nom de cette catégorie (modifié depuis l'onglet Catégories).</div>
   </div>
   <div class="fg"><label>Texte affiché *</label><input class="fi" id="nv-lb" value="${n.label||''}" placeholder="ex: New Drop 🔥" ${n.isCategory?'disabled':''}/></div>
-  <div class="fg" id="nv-lk-wrap" style="${n.isCategory?'display:none':''}"><label>Destination *</label><select class="fi" id="nv-lk">${['newdrop','about','homme','femme','acc'].map(l=>`<option value="${l}"${n.link===l?' selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="fg" id="nv-lk-wrap" style="${n.isCategory?'display:none':''}"><label>Destination *</label><select class="fi" id="nv-lk">${[...CATS.map(c=>[c.id,c.name]),['about','Page À propos']].map(([l,t])=>`<option value="${escapeHtml(l)}"${n.link===l?' selected':''}>${escapeHtml(t)}</option>`).join('')}</select></div>
   <div class="fg"><label><input type="checkbox" id="nv-hl" ${n.highlight?'checked':''} style="margin-right:6px"/>Mettre en rouge (mise en avant, ex: New Drop)</label></div>
 `;}
 function onNavLinkCatChange(sel){
@@ -1510,7 +1512,7 @@ function slideForm(s){return `
   <div class="fg"><label>Titre *</label><input class="fi" id="sf-ti" value="${s.title||''}"/></div>
   <div class="fg"><label>Eyebrow (texte au-dessus du titre)</label><input class="fi" id="sf-ey" value="${s.eyebrow||''}"/></div>
   <div class="fg"><label>Sous-titre</label><input class="fi" id="sf-su" value="${s.subtitle||''}"/></div>
-  <div class="fr"><div class="fg"><label>Texte CTA</label><input class="fi" id="sf-ct" value="${s.cta||'Découvrir →'}"/></div><div class="fg"><label>Destination</label><select class="fi" id="sf-lk">${['homme','femme','acc','newdrop','about'].map(l=>`<option value="${l}"${s.link===l?' selected':''}>${l}</option>`).join('')}</select></div></div>
+  <div class="fr"><div class="fg"><label>Texte CTA</label><input class="fi" id="sf-ct" value="${s.cta||'Découvrir →'}"/></div><div class="fg"><label>Destination</label><select class="fi" id="sf-lk">${[...CATS.map(c=>[c.id,c.name]),['about','Page À propos']].map(([l,t])=>`<option value="${escapeHtml(l)}"${s.link===l?' selected':''}>${escapeHtml(t)}</option>`).join('')}</select></div></div>
   <div class="fg"><label>Image de fond du slide</label>
     <div class="upl"><input type="file" accept="image/*" onchange="hup(this,'sf-ip',true)"/><div class="upl-i">🖼️</div><div class="upl-t">Uploader l'image de fond (format paysage, min 1400px)</div></div>
     <div id="sf-ip" style="margin-top:8px">${s.img?`<img src="${s.img}" style="width:100%;height:80px;object-fit:cover;border-radius:5px;display:block"/>`:''}</div>
@@ -1654,7 +1656,7 @@ async function doSave(){
     // Cherche par ID d'abord (modification), sinon par nom (création)
     const existing=existingId?PRODS.find(p=>String(p.id)===String(existingId)):null;
     const p=existing?{...existing}:{id:null,active:true,imgs:[]};
-    p.name=nm;p.cat=$('pf-ct')?.value||'homme';p.price=+($('pf-pr')?.value||0);p.buy=+($('pf-buy')?.value||0);p.old=+($('pf-ol')?.value||0);p.badge=$('pf-bdg')?.value||'';p.fourn=$('pf-fn')?.value||'';p.sizes=($('pf-sz')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);p.colors=($('pf-cl')?.value||'#0a0a0a').split(',').map(c=>c.trim()).filter(Boolean);p.desc=$('pf-dc')?.value||'';
+    p.name=nm;p.cat=$('pf-ct')?.value||(CATS[0]?CATS[0].id:'');p.price=+($('pf-pr')?.value||0);p.buy=+($('pf-buy')?.value||0);p.old=+($('pf-ol')?.value||0);p.badge=$('pf-bdg')?.value||'';p.fourn=$('pf-fn')?.value||'';p.sizes=($('pf-sz')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);p.colors=($('pf-cl')?.value||'#0a0a0a').split(',').map(c=>c.trim()).filter(Boolean);p.desc=$('pf-dc')?.value||'';
     // Collecte le stock saisi par taille
     p.stock={};document.querySelectorAll('.pf-stock-input').forEach(inp=>{p.stock[inp.dataset.size]=Math.max(0,+inp.value||0);});
     const iv=$('pf-iv');if(iv?.value)p.img=iv.value;
@@ -1760,7 +1762,7 @@ async function doSave(){
   }
   // SLIDE
   else if(mb.querySelector('#sf-ti')){
-    const sl={title:$('sf-ti')?.value||'',eyebrow:$('sf-ey')?.value||'',subtitle:$('sf-su')?.value||'',cta:$('sf-ct')?.value||'Découvrir →',link:$('sf-lk')?.value||'homme',active:true};
+    const sl={title:$('sf-ti')?.value||'',eyebrow:$('sf-ey')?.value||'',subtitle:$('sf-su')?.value||'',cta:$('sf-ct')?.value||'Découvrir →',link:$('sf-lk')?.value||'',active:true};
     const iv=$('sf-iv');if(iv?.value)sl.img=iv.value;
     try{
       if(_eidx!=null){
